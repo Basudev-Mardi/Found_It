@@ -262,10 +262,26 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           if (!ignore && data.success && Array.isArray(data.items)) {
-            setItems(data.items);
+            let combined = data.items;
+            try {
+              const saved = localStorage.getItem(STORAGE_KEY);
+              if (saved) {
+                const localList: Item[] = JSON.parse(saved);
+                if (Array.isArray(localList)) {
+                  const localUserItems = localList.filter(
+                    (li) => li.isUserReported && !data.items.some((di: Item) => di.id === li.id)
+                  );
+                  if (localUserItems.length > 0) {
+                    combined = [...localUserItems, ...data.items];
+                  }
+                }
+              }
+            } catch {}
+
+            setItems(combined);
             setApiConnected(true);
             try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(data.items));
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
             } catch {}
             setIsLoading(false);
             return;

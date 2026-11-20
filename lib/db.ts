@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 export interface Item {
   id: string;
@@ -20,32 +21,82 @@ export interface Item {
   isUserReported?: boolean;
 }
 
-const DATA_FILE = path.join(process.cwd(), "data", "items.json");
+// On Vercel / serverless environments, the root directory (/var/task) is read-only.
+// We write to os.tmpdir() on Vercel while reading the initial seed from bundled data.
+const isVercel = Boolean(process.env.VERCEL);
+const BUNDLED_FILE = path.join(process.cwd(), "data", "items.json");
+const TMP_FILE = path.join(os.tmpdir(), "findit_items.json");
+
+const DATA_FILE = isVercel ? TMP_FILE : BUNDLED_FILE;
+
+// Global in-memory cache to retain updates across warm lambda invocations
+let memoryItems: Item[] | null = null;
 
 function ensureDataFile(): void {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, "[]", "utf-8");
+  try {
+    const dir = path.dirname(DATA_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    if (!fs.existsSync(DATA_FILE)) {
+      if (fs.existsSync(BUNDLED_FILE)) {
+        const seed = fs.readFileSync(BUNDLED_FILE, "utf-8");
+        fs.writeFileSync(DATA_FILE, seed, "utf-8");
+      } else {
+        fs.writeFileSync(DATA_FILE, "[]", "utf-8");
+      }
+    }
+  } catch (err) {
+    console.warn("Could not ensure data file on filesystem, falling back to in-memory store:", err);
   }
 }
 
 export function getAllItems(): Item[] {
-  ensureDataFile();
-  try {
-    const raw = fs.readFileSync(DATA_FILE, "utf-8");
-    return JSON.parse(raw) as Item[];
-  } catch (error) {
-    console.error("Error reading items from file:", error);
-    return [];
+  if (memoryItems && memoryItems.length > 0) {
+    return memoryItems;
   }
+
+  ensureDataFile();
+
+  // Try DATA_FILE first
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, "utf-8");
+      const parsed = JSON.parse(raw) as Item[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        memoryItems = parsed;
+        return parsed;
+      }
+    }
+  } catch (error) {
+    console.warn("Error reading from primary DATA_FILE:", error);
+  }
+
+  // Fallback to reading BUNDLED_FILE
+  try {
+    if (fs.existsSync(BUNDLED_FILE)) {
+      const raw = fs.readFileSync(BUNDLED_FILE, "utf-8");
+      const parsed = JSON.parse(raw) as Item[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        memoryItems = parsed;
+        return parsed;
+      }
+    }
+  } catch (error) {
+    console.warn("Error reading bundled items.json:", error);
+  }
+
+  return memoryItems || [];
 }
 
 export function saveAllItems(items: Item[]): void {
-  ensureDataFile();
-  fs.writeFileSync(DATA_FILE, JSON.stringify(items, null, 2), "utf-8");
+  memoryItems = [...items];
+  try {
+    ensureDataFile();
+    fs.writeFileSync(DATA_FILE, JSON.stringify(items, null, 2), "utf-8");
+  } catch (error) {
+    console.warn("Could not persist items to disk (safe fallback to in-memory):", error);
+  }
 }
 
 export function getItemById(id: string): Item | undefined {
