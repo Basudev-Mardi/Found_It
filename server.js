@@ -209,11 +209,14 @@ app.delete("/api/items/:id", (req, res) => {
   res.json({ success: true, message: `Item with id '${req.params.id}' deleted successfully` });
 });
 
+// Staff Verification Email
+const STAFF_EMAIL = "nikhilminz04@gmail.com";
+
 // GET /api/claims
 app.get("/api/claims", (req, res) => {
   const items = readItems();
   const claims = items.filter((i) => i.status === "Claim Pending" || Boolean(i.claimantEmail));
-  res.json({ success: true, count: claims.length, claims });
+  res.json({ success: true, staffReviewerEmail: STAFF_EMAIL, count: claims.length, claims });
 });
 
 // POST /api/claims (submit verification claim)
@@ -242,19 +245,54 @@ app.post("/api/claims", (req, res) => {
   items[index].status = "Claim Pending";
   items[index].claimantProof = proof.trim();
   items[index].claimantEmail = email.trim();
+  items[index].staffReviewerEmail = STAFF_EMAIL;
   writeItems(items);
 
   res.json({
     success: true,
-    message: "Verification claim submitted to Campus Security Desk",
+    message: `Verification claim submitted to Campus Staff Officer (${STAFF_EMAIL})`,
+    staffReviewerEmail: STAFF_EMAIL,
     claim: {
       itemId,
       itemTitle: items[index].title,
       status: "Claim Pending",
       claimantEmail: email.trim(),
       claimantProof: proof.trim(),
+      staffReviewerEmail: STAFF_EMAIL,
       submittedAt: new Date().toISOString(),
     },
+    item: items[index],
+  });
+});
+
+// PATCH /api/claims (staff verifies claim: approve or reject)
+app.patch("/api/claims", (req, res) => {
+  const { itemId, action } = req.body;
+  if (!itemId) {
+    return res.status(400).json({ success: false, error: "Item ID is required" });
+  }
+
+  const items = readItems();
+  const index = items.findIndex((i) => i.id === itemId);
+  if (index === -1) {
+    return res.status(404).json({ success: false, error: `Item with id '${itemId}' not found` });
+  }
+
+  const newStatus = action === "approve" ? "Recovered" : "Available";
+  items[index].status = newStatus;
+  items[index].staffReviewerEmail = STAFF_EMAIL;
+  if (action === "reject") {
+    delete items[index].claimantProof;
+    delete items[index].claimantEmail;
+  }
+  writeItems(items);
+
+  res.json({
+    success: true,
+    message:
+      action === "approve"
+        ? `Claim approved by Staff Officer (${STAFF_EMAIL}) and marked as Recovered`
+        : `Claim rejected by Staff Officer (${STAFF_EMAIL}) and returned to Available pool`,
     item: items[index],
   });
 });

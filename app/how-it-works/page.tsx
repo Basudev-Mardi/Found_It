@@ -39,6 +39,8 @@ export default function HowItWorksPage() {
       location: "Admin Building, Room 104 (Ground Floor)",
       hours: "24/7 All Year Round",
       phone: "(555) 019-2834",
+      email: "nikhilminz04@gmail.com",
+      officer: "Officer Nikhil Minz",
       type: "Primary Custody & Safe",
       tagColor: "bg-emerald-100 text-emerald-800",
     },
@@ -166,7 +168,7 @@ export default function HowItWorksPage() {
                 </div>
                 <h3 className="text-base font-bold text-slate-900">Submit Verification Claim</h3>
                 <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-                  When you spot your item in the registry, click &quot;Claim&quot; and input secret identifiers (lock passcode, unique stickers, internal engravings, or scratches).
+                  When you spot your item in the registry, click &quot;Claim&quot; and input secret identifiers. All claims are routed to Campus Staff Verifier Nikhil (nikhilminz04@gmail.com) for verification.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-slate-100 text-[11px] font-semibold text-slate-400">
@@ -333,6 +335,14 @@ export default function HowItWorksPage() {
                     <span className="font-semibold text-slate-900">📞 Phone:</span>
                     <span>{hub.phone}</span>
                   </div>
+                  {hub.email && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-900">✉️ Staff:</span>
+                      <a href={`mailto:${hub.email}`} className="text-emerald-700 underline font-medium">
+                        {hub.email}
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -22,11 +22,14 @@
     "location": "Main Building",
     "date": "Nov 18, 2026",
     "description": "Official University Student ID card with blue campus lanyard found on 1st floor lobby table (student number ending in 8492).",
-    "status": "Available",
+    "status": "Claim Pending",
     "type": "found",
     "imageUrl": "/images/student-id-card.jpg",
-    "reporter": "Campus Security Desk",
-    "contactEmail": "security@campus.edu"
+    "reporter": "Officer Nikhil Minz (Campus Security)",
+    "contactEmail": "nikhilminz04@gmail.com",
+    "claimantProof": "Student card ending with #8492, CS Dept with blue lanyard badge",
+    "claimantEmail": "alex.student@campus.edu",
+    "staffReviewerEmail": "nikhilminz04@gmail.com"
   },
   {
     "id": "item-3",
@@ -99,7 +102,8 @@
     "reporter": "Prof. Sanders Office",
     "contactEmail": "sanders@campus.edu",
     "claimantProof": "Engraving inside says 'Alex-2025' and matches serial number on my phone settings.",
-    "claimantEmail": "alex.student@campus.edu"
+    "claimantEmail": "alex.student@campus.edu",
+    "staffReviewerEmail": "nikhilminz04@gmail.com"
   },
   {
     "id": "item-8",

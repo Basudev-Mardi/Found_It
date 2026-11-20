@@ -89,6 +89,17 @@ export default function ItemDetailsModal() {
                 <strong className="text-slate-900">Campus Contact:</strong> {selectedItem.contactEmail}
               </p>
             )}
+            {(selectedItem.status === "Claim Pending" || selectedItem.staffReviewerEmail) && (
+              <p>
+                <strong className="text-slate-900">Staff Verifier:</strong>{" "}
+                <a
+                  href={`mailto:${selectedItem.staffReviewerEmail || "nikhilminz04@gmail.com"}`}
+                  className="text-emerald-700 underline font-semibold"
+                >
+                  {selectedItem.staffReviewerEmail || "nikhilminz04@gmail.com"}
+                </a>
+              </p>
+            )}
           </div>
 
           <div>

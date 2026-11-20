@@ -17,6 +17,7 @@ export interface Item {
   contactEmail?: string;
   claimantProof?: string;
   claimantEmail?: string;
+  staffReviewerEmail?: string;
   isUserReported?: boolean;
 }
 
@@ -49,11 +50,14 @@ export const INITIAL_ITEMS: Item[] = [
     location: "Main Building",
     date: "Nov 18, 2026",
     description: "Official University Student ID card with blue campus lanyard found on 1st floor lobby table (student number ending in 8492).",
-    status: "Available",
+    status: "Claim Pending",
     type: "found",
     imageUrl: "/images/student-id-card.jpg",
-    reporter: "Campus Security Desk",
-    contactEmail: "security@campus.edu",
+    reporter: "Officer Nikhil Minz (Campus Security)",
+    contactEmail: "nikhilminz04@gmail.com",
+    claimantProof: "Student card ending with #8492, CS Dept with blue lanyard badge",
+    claimantEmail: "alex.student@campus.edu",
+    staffReviewerEmail: "nikhilminz04@gmail.com",
   },
   {
     id: "item-3",
@@ -127,6 +131,7 @@ export const INITIAL_ITEMS: Item[] = [
     contactEmail: "sanders@campus.edu",
     claimantProof: "Engraving inside says 'Alex-2025' and matches serial number on my phone settings.",
     claimantEmail: "alex.student@campus.edu",
+    staffReviewerEmail: "nikhilminz04@gmail.com",
   },
   {
     id: "item-8",
@@ -185,6 +190,7 @@ interface ItemsContextType {
     imageUrl?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   claimItem: (itemId: string, proof: string, email: string) => Promise<{ success: boolean; error?: string }>;
+  verifyClaim: (itemId: string, action: "approve" | "reject") => Promise<{ success: boolean; error?: string }>;
   markRecovered: (itemId: string) => Promise<{ success: boolean; error?: string }>;
   refreshItems: () => Promise<void>;
   selectedItem: Item | null;
@@ -410,7 +416,7 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
           prev.map((item) => (item.id === itemId ? data.item : item))
         );
         setApiConnected(true);
-        showToast("Claim verification submitted to Campus Security!", "success");
+        showToast("Claim submitted! Routed to Staff Officer (nikhilminz04@gmail.com)", "success");
         return { success: true };
       }
     } catch (err) {
@@ -427,11 +433,65 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
               status: "Claim Pending",
               claimantProof: proof,
               claimantEmail: email,
+              staffReviewerEmail: "nikhilminz04@gmail.com",
             }
           : item
       )
     );
-    showToast("Claim verification submitted locally to Campus Security!", "success");
+    showToast("Claim submitted! Routed to Staff Officer (nikhilminz04@gmail.com)", "success");
+    return { success: true };
+  };
+
+  const verifyClaim = async (
+    itemId: string,
+    action: "approve" | "reject"
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch("/api/claims", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Failed to process claim verification", "error");
+        return { success: false, error: data.error };
+      }
+      if (data.success && data.item) {
+        setItems((prev) => prev.map((item) => (item.id === itemId ? data.item : item)));
+        setApiConnected(true);
+        showToast(
+          action === "approve"
+            ? "Claim approved by Staff! Item marked as Recovered."
+            : "Claim rejected by Staff. Item returned to Available pool.",
+          "success"
+        );
+        return { success: true };
+      }
+    } catch (err) {
+      console.warn("API claims PATCH error, updating locally", err);
+      setApiConnected(false);
+    }
+
+    // Fallback local update
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              status: action === "approve" ? "Recovered" : "Available",
+              staffReviewerEmail: "nikhilminz04@gmail.com",
+              ...(action === "reject" ? { claimantProof: undefined, claimantEmail: undefined } : {}),
+            }
+          : item
+      )
+    );
+    showToast(
+      action === "approve"
+        ? "Claim approved by Staff! Item marked as Recovered."
+        : "Claim rejected by Staff. Item returned to Available pool.",
+      "success"
+    );
     return { success: true };
   };
 
@@ -484,6 +544,7 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
         items,
         addItem,
         claimItem,
+        verifyClaim,
         markRecovered,
         refreshItems,
         selectedItem,

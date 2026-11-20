@@ -53,7 +53,7 @@ export default function ClaimModal() {
         setClaimEmail("");
         setErrors({});
         setApiError(null);
-      }, 2500);
+      }, 5000);
     } else {
       setApiError(result.error || "Failed to submit claim verification request.");
     }
@@ -69,7 +69,7 @@ export default function ClaimModal() {
                 Verify &amp; Claim Item
               </h3>
               <p className="text-[11px] text-slate-500">
-                Verifications are processed by Campus Security
+                Staff Verifier: <span className="font-semibold text-emerald-700">nikhilminz04@gmail.com</span>
               </p>
             </div>
             <button
@@ -93,16 +93,50 @@ export default function ClaimModal() {
           )}
 
           {isSubmitted ? (
-            <div className="py-8 text-center space-y-3">
+            <div className="py-6 text-center space-y-3 animate-fadeIn">
               <div className="w-12 h-12 rounded-full bg-[#d4f938] text-slate-950 text-2xl font-bold flex items-center justify-center mx-auto shadow-sm">
                 ✓
               </div>
               <h4 className="text-base font-bold text-slate-900">
-                Verification Request Sent!
+                Claim Sent to Staff Verifier!
               </h4>
-              <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                Your claim for &quot;{claimingItem.title}&quot; has been recorded on the backend API. Check your email ({claimEmail}) for security instructions.
+              <p className="text-xs text-slate-600 max-w-xs mx-auto leading-relaxed">
+                Your claim for &quot;{claimingItem.title}&quot; has been recorded and routed to Campus Staff Officer{" "}
+                <strong className="text-slate-900">Nikhil Minz</strong> (
+                <a href="mailto:nikhilminz04@gmail.com" className="text-emerald-700 underline font-semibold">
+                  nikhilminz04@gmail.com
+                </a>
+                ).
               </p>
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                <a
+                  href={`mailto:nikhilminz04@gmail.com?subject=Claim%20Verification%20for%20${encodeURIComponent(
+                    claimingItem.title
+                  )}&body=Hello%20Campus%20Staff%20Officer%20Nikhil,%0D%0A%0D%0AI%20submitted%20an%20ownership%20claim%20for%20"${encodeURIComponent(
+                    claimingItem.title
+                  )}"%20(Item%20ID:%20${claimingItem.id}).%0D%0A%0D%0AMy%20Email:%20${encodeURIComponent(
+                    claimEmail
+                  )}%0D%0AIdentifying%20Proof:%20${encodeURIComponent(
+                    claimProof
+                  )}%0D%0A%0D%0APlease%20verify%20my%20claim%20and%20issue%20the%20pickup%20pass.`}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 bg-[#0c242b] hover:bg-[#163d47] text-white text-xs font-bold px-4 py-2.5 rounded-full transition shadow-xs"
+                >
+                  <span>📧 Email Staff (nikhilminz04@gmail.com)</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSubmitted(false);
+                    setClaimingItem(null);
+                    setClaimProof("");
+                    setClaimEmail("");
+                    setErrors({});
+                  }}
+                  className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="mt-4 space-y-4">
@@ -120,6 +154,18 @@ export default function ClaimModal() {
                   <p className="text-[11px] text-slate-500 truncate">
                     {claimingItem.location} • {claimingItem.campus}
                   </p>
+                </div>
+              </div>
+
+              {/* Staff Verifier Badge Info */}
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-start gap-2.5 text-emerald-950">
+                <span className="text-base shrink-0">🛡️</span>
+                <div className="text-[11px] leading-relaxed">
+                  <strong>Campus Staff Reviewer:</strong> Claims will be forwarded directly to Officer Nikhil (
+                  <a href="mailto:nikhilminz04@gmail.com" className="font-bold underline text-emerald-800">
+                    nikhilminz04@gmail.com
+                  </a>
+                  ) to verify your proof before handing over the item.
                 </div>
               </div>
 

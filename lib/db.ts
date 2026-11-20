@@ -16,6 +16,7 @@ export interface Item {
   contactEmail?: string;
   claimantProof?: string;
   claimantEmail?: string;
+  staffReviewerEmail?: string;
   isUserReported?: boolean;
 }
 

@@ -6,7 +6,7 @@ import { useItems } from "../context/ItemsContext";
 import ItemCard from "../components/ItemCard";
 
 export default function DashboardPage() {
-  const { items, openReportModal, markRecovered, setSelectedItem, showToast } = useItems();
+  const { items, openReportModal, markRecovered, verifyClaim, setSelectedItem, showToast } = useItems();
 
   const [activeTab, setActiveTab] = useState<"lost" | "found" | "claims" | "activity">("lost");
 
@@ -356,8 +356,44 @@ export default function DashboardPage() {
                 Claim Verification Tickets &amp; Collection Passes
               </h2>
               <p className="text-xs text-slate-500">
-                Track verification progress of your ownership claims with campus security.
+                All submitted ownership claims are routed to Campus Staff Officer Nikhil Minz for verification.
               </p>
+            </div>
+          </div>
+
+          {/* Official Campus Staff Verification Desk Banner */}
+          <div className="bg-gradient-to-r from-[#0c242b] via-[#163f4b] to-[#0c242b] text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-[#d4f938] text-slate-950 flex items-center justify-center text-xl font-black shrink-0 shadow-sm">
+                🛡️
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-[#d4f938]">
+                    Campus Staff Verification Officer Desk
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                </div>
+                <p className="text-xs text-slate-200 mt-0.5">
+                  Designated Verifier: <strong className="text-white">Officer Nikhil Minz</strong> (
+                  <a href="mailto:nikhilminz04@gmail.com" className="text-[#d4f938] underline font-mono">
+                    nikhilminz04@gmail.com
+                  </a>
+                  )
+                </p>
+                <p className="text-[11px] text-slate-300">
+                  Every claim is assigned to this email. You can verify proof directly from here or through Gmail.
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0 flex items-center gap-2">
+              <a
+                href="mailto:nikhilminz04@gmail.com?subject=Campus%20Lost%20and%20Found%20Claims%20Verification%20Review"
+                className="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-4 py-2 rounded-full transition flex items-center gap-1.5"
+              >
+                <span>📧 Open Staff Inbox</span>
+              </a>
             </div>
           </div>
 
@@ -365,16 +401,16 @@ export default function DashboardPage() {
             {myClaims.map((item) => (
               <div
                 key={item.id}
-                className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-start sm:items-center gap-4">
                   <img
                     src={item.imageUrl}
                     alt={item.title}
                     className="w-16 h-16 rounded-xl object-cover shrink-0"
                   />
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base font-bold text-slate-900">{item.title}</h3>
                       <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
                         Verification Pending
@@ -383,26 +419,54 @@ export default function DashboardPage() {
                     <p className="text-xs text-slate-500 mt-0.5">
                       Held at: <strong className="text-slate-800">{item.location} ({item.campus})</strong>
                     </p>
-                    {item.claimantProof && (
-                      <p className="text-[11px] text-slate-400 mt-1 italic line-clamp-1">
-                        Proof submitted: &quot;{item.claimantProof}&quot;
+                    {item.claimantEmail && (
+                      <p className="text-[11px] text-slate-600 mt-1">
+                        <strong>Claimant:</strong>{" "}
+                        <span className="font-mono text-slate-800">{item.claimantEmail}</span>
                       </p>
                     )}
+                    {item.claimantProof && (
+                      <p className="text-[11px] text-slate-500 mt-0.5 italic line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        &quot;{item.claimantProof}&quot;
+                      </p>
+                    )}
+                    <p className="text-[10px] text-emerald-700 font-semibold mt-1">
+                      🛡️ Assigned Staff Verifier: nikhilminz04@gmail.com
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                  <a
+                    href={`mailto:${item.claimantEmail || "nikhilminz04@gmail.com"}?subject=FoundIt%20Claim%20Verification%20for%20${encodeURIComponent(
+                      item.title
+                    )}&body=Hello,%0D%0A%0D%0AThis%20is%20Campus%20Staff%20Officer%20Nikhil%20Minz%20(nikhilminz04@gmail.com)%20regarding%20your%20claim%20for%20"${encodeURIComponent(
+                      item.title
+                    )}".%0D%0A%0D%0APlease%20provide%20any%20additional%20verification%20photos%20or%20serial%20numbers%20so%20we%20can%20authorize%20your%20pickup%20pass.`}
+                    className="px-3.5 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition flex items-center gap-1"
+                  >
+                    <span>📧 Verify via Email</span>
+                  </a>
+
+                  <button
+                    onClick={() => verifyClaim(item.id, "approve")}
+                    className="px-3.5 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition shadow-xs cursor-pointer flex items-center gap-1"
+                  >
+                    <span>✓ Approve Claim</span>
+                  </button>
+
+                  <button
+                    onClick={() => verifyClaim(item.id, "reject")}
+                    className="px-3 py-1.5 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-full transition cursor-pointer"
+                  >
+                    Reject
+                  </button>
+
                   <button
                     onClick={() => setSelectedItem(item)}
-                    className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition cursor-pointer"
+                    className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer"
                   >
-                    View Record
-                  </button>
-                  <button
-                    onClick={() => showToast("Pickup Pass QR code downloaded!")}
-                    className="px-4 py-2 text-xs font-bold bg-[#d4f938] hover:bg-[#c2f32e] text-slate-950 rounded-full transition shadow-xs cursor-pointer"
-                  >
-                    Get Pickup Pass
+                    View
                   </button>
                 </div>
               </div>
