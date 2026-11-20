@@ -188,6 +188,8 @@ interface ItemsContextType {
     description: string;
     type: "lost" | "found";
     imageUrl?: string;
+    contactEmail?: string;
+    reporter?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   claimItem: (itemId: string, proof: string, email: string) => Promise<{ success: boolean; error?: string }>;
   verifyClaim: (itemId: string, action: "approve" | "reject") => Promise<{ success: boolean; error?: string }>;
@@ -320,6 +322,8 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
     description: string;
     type: "lost" | "found";
     imageUrl?: string;
+    contactEmail?: string;
+    reporter?: string;
   }): Promise<{ success: boolean; error?: string }> => {
     const today = new Date().toLocaleDateString("en-US", {
       month: "short",
@@ -336,6 +340,13 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       Bags: "/images/college-backpack.jpg",
     };
 
+    const userEmail = newItemData.contactEmail?.trim() || "student@university.edu";
+    const userReporter =
+      newItemData.reporter ||
+      (newItemData.contactEmail?.trim()
+        ? `Community Member (${newItemData.contactEmail.trim().split("@")[0]})`
+        : "You (Submitted Just Now)");
+
     const payload = {
       title: newItemData.title.trim(),
       category: newItemData.category,
@@ -348,8 +359,8 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
         newItemData.imageUrl ||
         fallbackImages[newItemData.category] ||
         "/images/bike-key.jpg",
-      reporter: "You (Submitted Just Now)",
-      contactEmail: "student@university.edu",
+      reporter: userReporter,
+      contactEmail: userEmail,
       isUserReported: true,
     };
 

@@ -140,7 +140,7 @@ app.post("/api/items", (req, res) => {
   if (!type || (type !== "lost" && type !== "found")) {
     errors.push("Type must be either 'lost' or 'found'.");
   }
-  if (contactEmail && !EMAIL_REGEX.test(contactEmail)) {
+  if (contactEmail && typeof contactEmail === "string" && !EMAIL_REGEX.test(contactEmail.trim())) {
     errors.push("Invalid contact email format.");
   }
 
@@ -155,6 +155,15 @@ app.post("/api/items", (req, res) => {
     year: "numeric",
   });
 
+  const fallbackImages = {
+    Electronics: "/images/wireless-headphones.jpg",
+    "ID Cards": "/images/student-id-card.jpg",
+    Wallets: "/images/leather-wallet.jpg",
+    Bottles: "/images/water-bottle.jpg",
+    Keys: "/images/bike-key.jpg",
+    Bags: "/images/college-backpack.jpg",
+  };
+
   const newItem = {
     id: `item-${Date.now()}`,
     title: title.trim(),
@@ -165,9 +174,9 @@ app.post("/api/items", (req, res) => {
     description: description.trim(),
     status: "Available",
     type,
-    imageUrl: imageUrl || "/images/bike-key.jpg",
-    reporter: reporter || "Campus Community Member",
-    contactEmail: contactEmail || "student@university.edu",
+    imageUrl: imageUrl || fallbackImages[category] || "/images/bike-key.jpg",
+    reporter: reporter || (contactEmail?.trim() ? `Member (${contactEmail.trim().split("@")[0]})` : "Campus Community Member"),
+    contactEmail: contactEmail ? contactEmail.trim() : "student@university.edu",
     isUserReported: true,
   };
 

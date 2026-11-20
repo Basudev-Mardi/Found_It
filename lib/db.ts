@@ -61,6 +61,15 @@ export function createItem(data: Omit<Item, "id" | "date" | "status"> & { date?:
     year: "numeric",
   });
 
+  const fallbackImages: Record<string, string> = {
+    Electronics: "/images/wireless-headphones.jpg",
+    "ID Cards": "/images/student-id-card.jpg",
+    Wallets: "/images/leather-wallet.jpg",
+    Bottles: "/images/water-bottle.jpg",
+    Keys: "/images/bike-key.jpg",
+    Bags: "/images/college-backpack.jpg",
+  };
+
   const newItem: Item = {
     id: `item-${Date.now()}`,
     title: data.title,
@@ -71,7 +80,7 @@ export function createItem(data: Omit<Item, "id" | "date" | "status"> & { date?:
     description: data.description,
     status: data.status || "Available",
     type: data.type,
-    imageUrl: data.imageUrl || "/images/bike-key.jpg",
+    imageUrl: data.imageUrl || fallbackImages[data.category] || "/images/bike-key.jpg",
     reporter: data.reporter || "Campus Community Member",
     contactEmail: data.contactEmail || "student@university.edu",
     isUserReported: data.isUserReported ?? true,

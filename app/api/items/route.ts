@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       errors.push("Type must be either 'lost' or 'found'.");
     }
 
-    if (contactEmail && !EMAIL_REGEX.test(contactEmail)) {
+    if (contactEmail && typeof contactEmail === "string" && !EMAIL_REGEX.test(contactEmail.trim())) {
       errors.push("Please provide a valid contact email address.");
     }
 
@@ -101,8 +101,8 @@ export async function POST(request: NextRequest) {
       description: description.trim(),
       type,
       imageUrl,
-      reporter: reporter || "Campus Community Member",
-      contactEmail: contactEmail || "student@university.edu",
+      reporter: reporter || (contactEmail?.trim() ? `Member (${contactEmail.trim().split("@")[0]})` : "Campus Community Member"),
+      contactEmail: contactEmail ? contactEmail.trim() : "student@university.edu",
       isUserReported: body.isUserReported ?? true,
     });
 

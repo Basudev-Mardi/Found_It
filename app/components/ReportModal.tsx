@@ -20,36 +20,76 @@ export default function ReportModal() {
 
   if (!isReportModalOpen) return null;
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      showToast("Photo must be less than 10MB", "error");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPhoto(reader.result as string);
-      showToast("Photo attached successfully!", "success");
-    };
-    reader.readAsDataURL(file);
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(event.target?.result as string);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.75));
+        };
+        img.onerror = () => resolve(event.target?.result as string);
+      };
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(file);
+    });
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      showToast("Photo must be less than 15MB", "error");
+      return;
+    }
+    const compressed = await compressImage(file);
+    if (compressed) {
+      setPhoto(compressed);
+      showToast("Photo attached & optimized!", "success");
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith("image/")) {
-      if (file.size > 10 * 1024 * 1024) {
-        showToast("Photo must be less than 10MB", "error");
+      if (file.size > 15 * 1024 * 1024) {
+        showToast("Photo must be less than 15MB", "error");
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhoto(reader.result as string);
-        showToast("Photo attached successfully!", "success");
-      };
-      reader.readAsDataURL(file);
+      const compressed = await compressImage(file);
+      if (compressed) {
+        setPhoto(compressed);
+        showToast("Photo attached & optimized!", "success");
+      }
     }
   };
 
@@ -88,33 +128,43 @@ export default function ReportModal() {
     setApiError(null);
 
     if (!validateForm()) {
+      showToast("Please fill in all required fields marked with *", "error");
       return;
     }
 
-    setIsSubmitting(true);
-    const result = await addItem({
-      title: title.trim(),
-      category,
-      campus,
-      location: location.trim(),
-      description: description.trim(),
-      type: reportModalType,
-      imageUrl: photo || undefined,
-    });
+    try {
+      setIsSubmitting(true);
+      const result = await addItem({
+        title: title.trim(),
+        category,
+        campus,
+        location: location.trim(),
+        description: description.trim(),
+        type: reportModalType,
+        imageUrl: photo || undefined,
+        contactEmail: contactEmail.trim() || undefined,
+      });
 
-    setIsSubmitting(false);
-
-    if (result.success) {
-      setIsReportModalOpen(false);
-      setTitle("");
-      setLocation("");
-      setDescription("");
-      setContactEmail("");
-      setPhoto(null);
-      setFormErrors({});
-      setApiError(null);
-    } else {
-      setApiError(result.error || "Failed to submit report. Please review your input.");
+      if (result.success) {
+        setIsReportModalOpen(false);
+        setTitle("");
+        setLocation("");
+        setDescription("");
+        setContactEmail("");
+        setPhoto(null);
+        setFormErrors({});
+        setApiError(null);
+      } else {
+        const errorMsg = result.error || "Failed to submit report. Please review your input.";
+        setApiError(errorMsg);
+        showToast(errorMsg, "error");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred while publishing report.";
+      setApiError(msg);
+      showToast(msg, "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -149,6 +199,21 @@ export default function ReportModal() {
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-center gap-2">
               <span className="text-sm">⚠️</span>
               <span>{apiError}</span>
+            </div>
+          )}
+
+          {/* Form Validation Error Alert */}
+          {Object.keys(formErrors).length > 0 && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2">
+              <span className="text-sm shrink-0">⚠️</span>
+              <div>
+                <strong>Please complete required fields:</strong>
+                <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-[11px]">
+                  {Object.values(formErrors).map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
 
