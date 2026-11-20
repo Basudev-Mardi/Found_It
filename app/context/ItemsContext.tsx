@@ -43,7 +43,7 @@ export const INITIAL_ITEMS: Item[] = [
     campus: "Central Campus",
     location: "Main Building",
     date: "Nov 18, 2026",
-    description: "Official University Student ID card found on 1st floor lobby table (student number ending in 8492).",
+    description: "Official University Student ID card with blue campus lanyard found on 1st floor lobby table (student number ending in 8492).",
     status: "Available",
     type: "found",
     imageUrl: "/images/student-id-card.jpg",
@@ -148,7 +148,7 @@ export const INITIAL_ITEMS: Item[] = [
     description: "Black 3-button Toyota remote key fob with mini red paracord lanyard. Found near east parking gate.",
     status: "Available",
     type: "found",
-    imageUrl: "/images/brass-keys.jpg",
+    imageUrl: "/images/bike-key.jpg",
     reporter: "Parking Services Officer",
     contactEmail: "parking@campus.edu",
   },
@@ -207,23 +207,43 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from local storage
+  // Load from Backend API with localStorage fallback
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setItems(parsed);
+    async function loadData() {
+      try {
+        const res = await fetch("/api/items");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+            setItems(data.items);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data.items));
+            setIsLoaded(true);
+            return;
+          }
         }
+      } catch (err) {
+        console.warn("Could not fetch from /api/items, falling back to localStorage", err);
       }
-    } catch (e) {
-      console.error("Failed to load items from storage", e);
+
+      // Fallback to localStorage
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setItems(parsed);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load items from storage", e);
+      }
+      setIsLoaded(true);
     }
-    setIsLoaded(true);
+
+    loadData();
   }, []);
 
-  // Save to local storage on change
+  // Sync to local storage
   useEffect(() => {
     if (isLoaded) {
       try {
@@ -246,7 +266,7 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
     setIsReportModalOpen(true);
   };
 
-  const addItem = (newItemData: {
+  const addItem = async (newItemData: {
     title: string;
     category: string;
     campus: string;
@@ -270,15 +290,13 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       Bags: "/images/college-backpack.jpg",
     };
 
-    const newItem: Item = {
-      id: `item-${Date.now()}`,
+    const payload = {
       title: newItemData.title,
       category: newItemData.category,
       campus: newItemData.campus,
       location: newItemData.location,
       date: today,
       description: newItemData.description,
-      status: "Available",
       type: newItemData.type,
       imageUrl:
         newItemData.imageUrl ||
@@ -289,11 +307,60 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       isUserReported: true,
     };
 
-    setItems((prev) => [newItem, ...prev]);
+    // Try posting to backend API
+    try {
+      const res = await fetch("/api/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.item) {
+          setItems((prev) => [data.item, ...prev]);
+          showToast(`Your ${newItemData.type} item report has been published!`);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Backend API POST /api/items unavailable, updating locally", err);
+    }
+
+    // Fallback local update
+    const localItem: Item = {
+      id: `item-${Date.now()}`,
+      ...payload,
+      status: "Available",
+    };
+    setItems((prev) => [localItem, ...prev]);
     showToast(`Your ${newItemData.type} item report has been published!`);
   };
 
-  const claimItem = (itemId: string, proof: string, email: string) => {
+  const claimItem = async (itemId: string, proof: string, email: string) => {
+    // Try posting to backend claims API
+    try {
+      const res = await fetch("/api/claims", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId, proof, email }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.item) {
+          setItems((prev) =>
+            prev.map((item) => (item.id === itemId ? data.item : item))
+          );
+          showToast("Claim verification submitted to Campus Security!");
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Backend API POST /api/claims unavailable, updating locally", err);
+    }
+
+    // Fallback local update
     setItems((prev) =>
       prev.map((item) =>
         item.id === itemId
@@ -309,7 +376,30 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
     showToast("Claim verification submitted to Campus Security!");
   };
 
-  const markRecovered = (itemId: string) => {
+  const markRecovered = async (itemId: string) => {
+    // Try updating via backend API
+    try {
+      const res = await fetch(`/api/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Recovered" }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.item) {
+          setItems((prev) =>
+            prev.map((item) => (item.id === itemId ? data.item : item))
+          );
+          showToast("Status updated to Recovered!");
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Backend API PATCH /api/items/[id] unavailable, updating locally", err);
+    }
+
+    // Fallback local update
     setItems((prev) =>
       prev.map((item) =>
         item.id === itemId
