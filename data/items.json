@@ -72,7 +72,8 @@
     "type": "found",
     "imageUrl": "/images/bike-key.jpg",
     "reporter": "Library 2nd Floor Desk",
-    "contactEmail": "library-desk@campus.edu"
+    "contactEmail": "library-desk@campus.edu",
+    "staffReviewerEmail": "nikhilminz04@gmail.com"
   },
   {
     "id": "item-6",

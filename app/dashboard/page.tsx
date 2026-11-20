@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useItems } from "../context/ItemsContext";
-import ItemCard from "../components/ItemCard";
 
 export default function DashboardPage() {
   const { items, openReportModal, markRecovered, verifyClaim, setSelectedItem, showToast } = useItems();

@@ -222,7 +222,6 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
 
   const showToast = useCallback((message: string, type: "success" | "error" | "info" = "success") => {
     setToast({ message, type });
@@ -232,9 +231,8 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshItems = useCallback(async () => {
-    setIsLoading(true);
     try {
-      const res = await fetch("/api/items");
+      const res = await fetch("/api/items", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.items)) {
@@ -242,8 +240,7 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
           setApiConnected(true);
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data.items));
-          } catch {}
-          setIsLoading(false);
+          } catch { }
           return;
         }
       }
@@ -251,37 +248,64 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       console.warn("Backend API not reachable, using cached data", err);
       setApiConnected(false);
     }
-
-    // Fallback to localStorage if API unreachable
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setItems(parsed);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load items from storage", e);
-    }
-    setIsLoading(false);
   }, []);
 
-  // Initial load
+  // Initial load effect
   useEffect(() => {
-    refreshItems().then(() => setIsLoaded(true));
-  }, [refreshItems]);
+    let ignore = false;
+
+    async function fetchInitialItems() {
+      try {
+        const res = await fetch("/api/items", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (!ignore && data.success && Array.isArray(data.items)) {
+            setItems(data.items);
+            setApiConnected(true);
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(data.items));
+            } catch {}
+            setIsLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Backend API not reachable, using cached data", err);
+        if (!ignore) setApiConnected(false);
+      }
+
+      // Fallback to localStorage if API unreachable
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (!ignore && Array.isArray(parsed) && parsed.length > 0) {
+            setItems(parsed);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load items from storage", e);
+      }
+      if (!ignore) setIsLoading(false);
+    }
+
+    fetchInitialItems();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // Sync to local storage
   useEffect(() => {
-    if (isLoaded) {
+    if (!isLoading) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
       } catch (e) {
         console.error("Failed to save items to storage", e);
       }
     }
-  }, [items, isLoaded]);
+  }, [items, isLoading]);
 
   const openReportModal = (type: "lost" | "found" = "lost") => {
     setReportModalType(type);
@@ -429,12 +453,12 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       prev.map((item) =>
         item.id === itemId
           ? {
-              ...item,
-              status: "Claim Pending",
-              claimantProof: proof,
-              claimantEmail: email,
-              staffReviewerEmail: "nikhilminz04@gmail.com",
-            }
+            ...item,
+            status: "Claim Pending",
+            claimantProof: proof,
+            claimantEmail: email,
+            staffReviewerEmail: "nikhilminz04@gmail.com",
+          }
           : item
       )
     );
@@ -478,11 +502,11 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       prev.map((item) =>
         item.id === itemId
           ? {
-              ...item,
-              status: action === "approve" ? "Recovered" : "Available",
-              staffReviewerEmail: "nikhilminz04@gmail.com",
-              ...(action === "reject" ? { claimantProof: undefined, claimantEmail: undefined } : {}),
-            }
+            ...item,
+            status: action === "approve" ? "Recovered" : "Available",
+            staffReviewerEmail: "nikhilminz04@gmail.com",
+            ...(action === "reject" ? { claimantProof: undefined, claimantEmail: undefined } : {}),
+          }
           : item
       )
     );
@@ -528,9 +552,9 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       prev.map((item) =>
         item.id === itemId
           ? {
-              ...item,
-              status: "Recovered",
-            }
+            ...item,
+            status: "Recovered",
+          }
           : item
       )
     );
