@@ -6,7 +6,7 @@ import { useItems } from "./context/ItemsContext";
 import ItemCard from "./components/ItemCard";
 
 export default function Home() {
-  const { items, openReportModal, setClaimingItem } = useItems();
+  const { items, openReportModal, setClaimingItem, setSelectedItem } = useItems();
 
   // Filter tabs: "all" | "lost" | "found"
   const [activeTab, setActiveTab] = useState<"all" | "lost" | "found">("all");
@@ -15,10 +15,15 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [selectedCampus, setSelectedCampus] = useState("All Campuses");
+  const [showRecentlyFoundPopup, setShowRecentlyFoundPopup] = useState(true);
 
-  // Filter items
+  // Filter items (remove recovered items from lost view)
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      if (item.type === "lost" && item.status === "Recovered") {
+        return false;
+      }
+
       const matchesTab = activeTab === "all" || item.type === activeTab;
       const matchesSearch =
         searchQuery === "" ||
@@ -34,7 +39,13 @@ export default function Home() {
     });
   }, [items, activeTab, searchQuery, selectedCategory, selectedCampus]);
 
-  const featuredFoundItem = items.find((i) => i.id === "item-5") || items[0];
+  const mostRecentlyFound = useMemo(() => {
+    return (
+      items.find((i) => i.type === "found" && i.status === "Available") ||
+      items.find((i) => i.type === "found") ||
+      null
+    );
+  }, [items]);
 
   return (
     <div className="flex flex-col flex-1">
@@ -51,141 +62,209 @@ export default function Home() {
         {/* Dark Cinematic Gradient Overlay for text contrast */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/70 to-black/35 backdrop-brightness-95" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20 relative z-10 w-full flex flex-col lg:flex-row items-center justify-between gap-10">
-          {/* Left Column: Headline & Hero Actions */}
-          <div className="max-w-xl text-white">
-            {/* Top Tagline */}
-            <div className="flex items-center gap-2">
-              <span className="text-[#d4f938] text-xs font-black tracking-widest uppercase">
-                ONE CAMPUS. ONE COMMUNITY.
-              </span>
-              <div className="w-16 h-0.5 bg-[#d4f938]/80" />
-            </div>
-
-            {/* Main Headline */}
-            <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-white">
-              Lost something?
-              <br />
-              Let&apos;s{" "}
-              <span className="relative inline-block text-[#d4f938]">
-                bring it back.
-                <svg
-                  className="absolute left-0 -bottom-1.5 w-full h-3 text-[#d4f938]"
-                  viewBox="0 0 250 20"
-                  fill="none"
-                  preserveAspectRatio="none"
-                >
-                  <path
-                    d="M3 14C60 6 180 4 247 11"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    strokeLinecap="round"
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-16 relative z-10 w-full flex flex-col gap-8">
+          {/* Recently Found Dynamic Hero Pop-Up Banner */}
+          {showRecentlyFoundPopup && mostRecentlyFound && (
+            <div className="w-full bg-slate-900/90 border border-[#d4f938]/60 backdrop-blur-md rounded-2xl p-3.5 sm:p-4 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3 duration-300">
+              <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                <div className="relative shrink-0">
+                  <img
+                    src={mostRecentlyFound.imageUrl}
+                    alt={mostRecentlyFound.title}
+                    className="w-14 h-14 rounded-xl object-cover border border-[#d4f938]/50"
                   />
-                </svg>
-              </span>
-            </h1>
-
-            {/* Subtext */}
-            <p className="mt-5 text-slate-200 text-sm sm:text-base leading-relaxed max-w-lg font-normal">
-              FindIt helps you report lost items and discover found items across
-              campus — quickly, transparently, and securely.
-            </p>
-
-            {/* Action Buttons */}
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => openReportModal("lost")}
-                className="bg-[#d4f938] hover:bg-[#c2f32e] text-slate-950 font-bold px-6 py-3 rounded-full text-xs sm:text-sm flex items-center gap-2 shadow-lg transition active:scale-95 cursor-pointer"
-              >
-                <span>Report Lost Item</span>
-                <span className="font-extrabold text-base">→</span>
-              </button>
-
-              <Link
-                href="/found-items"
-                className="bg-black/40 hover:bg-black/60 border border-white/30 text-white font-semibold px-6 py-3 rounded-full text-xs sm:text-sm flex items-center gap-2 backdrop-blur-sm transition"
-              >
-                <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth={2} />
-                  <path strokeLinecap="round" d="M16 16L20 20" stroke="currentColor" strokeWidth={2} />
-                </svg>
-                <span>Explore Found Items</span>
-              </Link>
-            </div>
-
-            {/* Metric Highlights */}
-            <div className="mt-10 pt-6 border-t border-white/15 flex flex-wrap items-center gap-6 sm:gap-10">
-              <div className="flex items-center gap-2.5">
-                <span className="text-xl">👥</span>
+                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#d4f938] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#d4f938]"></span>
+                  </span>
+                </div>
                 <div>
-                  <div className="text-sm font-black text-white leading-none">10K+</div>
-                  <div className="text-[11px] text-slate-300 mt-0.5">Campus Members</div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-[#d4f938] text-slate-950 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
+                      Recently Found Pop-Up
+                    </span>
+                    <span className="text-[11px] text-slate-300">
+                      {mostRecentlyFound.campus}
+                    </span>
+                  </div>
+                  <h4 className="text-sm sm:text-base font-bold text-white mt-0.5 line-clamp-1">
+                    {mostRecentlyFound.title}
+                  </h4>
+                  <p className="text-xs text-slate-300 flex items-center gap-1.5 mt-0.5">
+                    <svg className="w-3.5 h-3.5 text-[#d4f938]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    </svg>
+                    <span>{mostRecentlyFound.location}</span>
+                    <span>•</span>
+                    <span className="text-slate-400">{mostRecentlyFound.date}</span>
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5">
-                <span className="text-xl">📦</span>
-                <div>
-                  <div className="text-sm font-black text-white leading-none">2.5K+</div>
-                  <div className="text-[11px] text-slate-300 mt-0.5">Items Handled</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <span className="text-xl">🛡️</span>
-                <div>
-                  <div className="text-sm font-black text-white leading-none">100%</div>
-                  <div className="text-[11px] text-slate-300 mt-0.5">Safe &amp; Secure</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Floating Interactive Card */}
-          <div className="relative shrink-0 hidden md:block">
-            {/* Floating Speech Bubble */}
-            <div className="absolute -top-5 -right-6 z-20 bg-white text-slate-900 text-xs font-bold px-3.5 py-1.5 rounded-full shadow-xl border border-slate-100 flex items-center gap-1.5 animate-pulse">
-              <div className="w-4 h-4 rounded-full bg-[#d4f938] text-slate-950 flex items-center justify-center text-[10px] font-black">
-                ✓
-              </div>
-              <span>Item safely returned</span>
-            </div>
-
-            {/* Found Card */}
-            <div className="bg-white rounded-2xl p-3.5 shadow-2xl border border-white/60 max-w-[270px] w-full transition hover:scale-[1.02]">
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                <span className="text-xs font-bold text-slate-800">Recently found</span>
-              </div>
-
-              <div className="w-full h-36 rounded-xl overflow-hidden bg-slate-100 relative">
-                <img
-                  src={featuredFoundItem.imageUrl}
-                  alt={featuredFoundItem.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-
-              <div className="mt-3 px-1">
-                <h4 className="text-sm font-bold text-slate-900 truncate">
-                  {featuredFoundItem.title}
-                </h4>
-                <div className="flex items-center gap-1 text-xs text-slate-500 font-medium mt-1">
-                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span>{featuredFoundItem.location}</span>
-                </div>
-
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
                 <button
-                  onClick={() => setClaimingItem(featuredFoundItem)}
-                  className="mt-3 w-full bg-slate-50 hover:bg-[#d4f938] hover:text-slate-950 border border-slate-200 text-slate-700 text-xs font-bold py-2 rounded-xl transition shadow-xs cursor-pointer"
+                  onClick={() => setSelectedItem(mostRecentlyFound)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition border border-white/20 cursor-pointer"
                 >
-                  Is this yours?
+                  View Details
+                </button>
+                <button
+                  onClick={() => setClaimingItem(mostRecentlyFound)}
+                  className="text-xs font-bold px-3.5 py-1.5 rounded-xl bg-[#d4f938] hover:bg-[#c2f32e] text-slate-950 transition shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                >
+                  <span>Is this yours? Claim</span>
+                  <span>→</span>
+                </button>
+                <button
+                  onClick={() => setShowRecentlyFoundPopup(false)}
+                  className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center text-xs transition cursor-pointer ml-1"
+                  title="Dismiss pop-up"
+                >
+                  ✕
                 </button>
               </div>
             </div>
+          )}
+
+          {/* Main Hero Row */}
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-10">
+            {/* Left Column: Headline & Hero Actions */}
+            <div className="max-w-xl text-white">
+              {/* Top Tagline */}
+              <div className="flex items-center gap-2">
+                <span className="text-[#d4f938] text-xs font-black tracking-widest uppercase">
+                  ONE CAMPUS. ONE COMMUNITY.
+                </span>
+                <div className="w-16 h-0.5 bg-[#d4f938]/80" />
+              </div>
+
+              {/* Main Headline */}
+              <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-white">
+                Lost something?
+                <br />
+                Let&apos;s{" "}
+                <span className="relative inline-block text-[#d4f938]">
+                  bring it back.
+                  <svg
+                    className="absolute left-0 -bottom-1.5 w-full h-3 text-[#d4f938]"
+                    viewBox="0 0 250 20"
+                    fill="none"
+                    preserveAspectRatio="none"
+                  >
+                    <path
+                      d="M3 14C60 6 180 4 247 11"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+              </h1>
+
+              {/* Subtext */}
+              <p className="mt-5 text-slate-200 text-sm sm:text-base leading-relaxed max-w-lg font-normal">
+                FindIt helps you report lost items and discover found items across
+                campus — quickly, transparently, and securely.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => openReportModal("lost")}
+                  className="bg-[#d4f938] hover:bg-[#c2f32e] text-slate-950 font-bold px-6 py-3 rounded-full text-xs sm:text-sm flex items-center gap-2 shadow-lg transition active:scale-95 cursor-pointer"
+                >
+                  <span>Report Lost Item</span>
+                  <span className="font-extrabold text-base">→</span>
+                </button>
+
+                <Link
+                  href="/found-items"
+                  className="bg-black/40 hover:bg-black/60 border border-white/30 text-white font-semibold px-6 py-3 rounded-full text-xs sm:text-sm flex items-center gap-2 backdrop-blur-sm transition"
+                >
+                  <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth={2} />
+                    <path strokeLinecap="round" d="M16 16L20 20" stroke="currentColor" strokeWidth={2} />
+                  </svg>
+                  <span>Explore Found Items</span>
+                </Link>
+              </div>
+
+              {/* Metric Highlights */}
+              <div className="mt-10 pt-6 border-t border-white/15 flex flex-wrap items-center gap-6 sm:gap-10">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">👥</span>
+                  <div>
+                    <div className="text-sm font-black text-white leading-none">10K+</div>
+                    <div className="text-[11px] text-slate-300 mt-0.5">Campus Members</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">📦</span>
+                  <div>
+                    <div className="text-sm font-black text-white leading-none">2.5K+</div>
+                    <div className="text-[11px] text-slate-300 mt-0.5">Items Handled</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">🛡️</span>
+                  <div>
+                    <div className="text-sm font-black text-white leading-none">100%</div>
+                    <div className="text-[11px] text-slate-300 mt-0.5">Safe &amp; Secure</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Floating Interactive Card */}
+            {mostRecentlyFound && (
+              <div className="relative shrink-0 hidden md:block">
+                {/* Floating Speech Bubble */}
+                <div className="absolute -top-5 -right-6 z-20 bg-white text-slate-900 text-xs font-bold px-3.5 py-1.5 rounded-full shadow-xl border border-slate-100 flex items-center gap-1.5 animate-pulse">
+                  <div className="w-4 h-4 rounded-full bg-[#d4f938] text-slate-950 flex items-center justify-center text-[10px] font-black">
+                    ✓
+                  </div>
+                  <span>Recently found</span>
+                </div>
+
+                {/* Found Card */}
+                <div className="bg-white rounded-2xl p-3.5 shadow-2xl border border-white/60 max-w-[270px] w-full transition hover:scale-[1.02]">
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                    <span className="text-xs font-bold text-slate-800">Recently found</span>
+                  </div>
+
+                  <div className="w-full h-36 rounded-xl overflow-hidden bg-slate-100 relative">
+                    <img
+                      src={mostRecentlyFound.imageUrl}
+                      alt={mostRecentlyFound.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <div className="mt-3 px-1">
+                    <h4 className="text-sm font-bold text-slate-900 truncate">
+                      {mostRecentlyFound.title}
+                    </h4>
+                    <div className="flex items-center gap-1 text-xs text-slate-500 font-medium mt-1">
+                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span>{mostRecentlyFound.location}</span>
+                    </div>
+
+                    <button
+                      onClick={() => setClaimingItem(mostRecentlyFound)}
+                      className="mt-3 w-full bg-slate-50 hover:bg-[#d4f938] hover:text-slate-950 border border-slate-200 text-slate-700 text-xs font-bold py-2 rounded-xl transition shadow-xs cursor-pointer"
+                    >
+                      Is this yours?
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>

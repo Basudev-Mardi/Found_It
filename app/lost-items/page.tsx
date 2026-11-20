@@ -14,9 +14,9 @@ export default function LostItemsPage() {
   const [selectedStatus, setSelectedStatus] = useState("All Status");
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
 
-  // Get only lost items
+  // Get only lost items (excluding recovered items as requested)
   const lostItems = useMemo(() => {
-    return items.filter((item) => item.type === "lost");
+    return items.filter((item) => item.type === "lost" && item.status !== "Recovered");
   }, [items]);
 
   // Categories list
@@ -59,7 +59,9 @@ export default function LostItemsPage() {
   }, [lostItems, searchQuery, selectedCategory, selectedCampus, selectedStatus, sortBy]);
 
   const activeMissingCount = lostItems.filter((i) => i.status === "Available").length;
-  const recoveredCount = lostItems.filter((i) => i.status === "Recovered").length;
+  const recoveredCount = useMemo(() => {
+    return items.filter((i) => i.status === "Recovered").length;
+  }, [items]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full space-y-8">
@@ -187,10 +189,9 @@ export default function LostItemsPage() {
           onChange={(e) => setSelectedStatus(e.target.value)}
           className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none cursor-pointer"
         >
-          <option value="All Status">All Statuses</option>
+          <option value="All Status">All Missing Items</option>
           <option value="Available">Actively Missing</option>
           <option value="Claim Pending">Claim Pending</option>
-          <option value="Recovered">Recovered</option>
         </select>
 
         {/* Sort dropdown */}
