@@ -31,8 +31,7 @@ export const INITIAL_ITEMS: Item[] = [
     description: "Matte black over-ear Bluetooth headphones with protective travel case left on 2nd floor study carrel.",
     status: "Available",
     type: "lost",
-    imageUrl:
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=700&q=80",
+    imageUrl: "/images/wireless-headphones.jpg",
     reporter: "Ethan K. (Arts & Sciences)",
     contactEmail: "ethan.k@campus.edu",
     isUserReported: true,
@@ -47,8 +46,7 @@ export const INITIAL_ITEMS: Item[] = [
     description: "Official University Student ID card found on 1st floor lobby table (student number ending in 8492).",
     status: "Available",
     type: "found",
-    imageUrl:
-      "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=700&q=80",
+    imageUrl: "/images/student-id-card.jpg",
     reporter: "Campus Security Desk",
     contactEmail: "security@campus.edu",
   },
@@ -62,8 +60,7 @@ export const INITIAL_ITEMS: Item[] = [
     description: "Black leather bifold wallet with contrast brown stitching. Important cards and transit pass inside.",
     status: "Available",
     type: "lost",
-    imageUrl:
-      "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=700&q=80",
+    imageUrl: "/images/leather-wallet.jpg",
     reporter: "Marcus L. (Economics)",
     contactEmail: "marcus.l@campus.edu",
     isUserReported: true,
@@ -78,8 +75,7 @@ export const INITIAL_ITEMS: Item[] = [
     description: "Stainless steel 750ml insulated flask bottle with metallic matte sheen and silver cap. Left near bleachers.",
     status: "Available",
     type: "found",
-    imageUrl:
-      "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=700&q=80",
+    imageUrl: "/images/water-bottle.jpg",
     reporter: "Fitness Center Reception",
     contactEmail: "rec@campus.edu",
   },
@@ -93,8 +89,7 @@ export const INITIAL_ITEMS: Item[] = [
     description: "Three brass dorm keys on a circular metallic ring with a small black tag and bike locker key.",
     status: "Available",
     type: "found",
-    imageUrl:
-      "https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&w=700&q=80",
+    imageUrl: "/images/brass-keys.jpg",
     reporter: "Library 2nd Floor Desk",
     contactEmail: "library-desk@campus.edu",
   },
@@ -108,8 +103,7 @@ export const INITIAL_ITEMS: Item[] = [
     description: "Navy blue college backpack with 15-inch laptop sleeve, notebook and small tear near outer pocket zipper.",
     status: "Available",
     type: "lost",
-    imageUrl:
-      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=700&q=80",
+    imageUrl: "/images/college-backpack.jpg",
     reporter: "Sophia T. (Computer Science)",
     contactEmail: "sophia.t@campus.edu",
   },
@@ -123,8 +117,7 @@ export const INITIAL_ITEMS: Item[] = [
     description: "White AirPods Pro case with small scratch on bottom hinge. Left on armrest seat 42B.",
     status: "Claim Pending",
     type: "found",
-    imageUrl:
-      "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?auto=format&fit=crop&w=700&q=80",
+    imageUrl: "/images/airpods-pro.jpg",
     reporter: "Prof. Sanders Office",
     contactEmail: "sanders@campus.edu",
     claimantProof: "Engraving inside says 'Alex-2025' and matches serial number on my phone settings.",
@@ -140,8 +133,7 @@ export const INITIAL_ITEMS: Item[] = [
     description: "Ray-Ban round frame eyeglasses with thin silver rims inside a magnetic hard case.",
     status: "Available",
     type: "lost",
-    imageUrl:
-      "https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=700&q=80",
+    imageUrl: "/images/prescription-glasses.jpg",
     reporter: "Liam D. (Architecture)",
     contactEmail: "liam.d@campus.edu",
     isUserReported: true,
@@ -156,8 +148,7 @@ export const INITIAL_ITEMS: Item[] = [
     description: "Black 3-button Toyota remote key fob with mini red paracord lanyard. Found near east parking gate.",
     status: "Available",
     type: "found",
-    imageUrl:
-      "https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&w=700&q=80",
+    imageUrl: "/images/brass-keys.jpg",
     reporter: "Parking Services Officer",
     contactEmail: "parking@campus.edu",
   },
@@ -171,8 +162,7 @@ export const INITIAL_ITEMS: Item[] = [
     description: "Space Gray MacBook Air with sticker of GitHub Octocat and university robotics club.",
     status: "Recovered",
     type: "lost",
-    imageUrl:
-      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=700&q=80",
+    imageUrl: "/images/macbook-air.jpg",
     reporter: "David R. (Engineering)",
     contactEmail: "david.r@campus.edu",
   },
@@ -206,7 +196,7 @@ interface ItemsContextType {
 
 const ItemsContext = createContext<ItemsContextType | undefined>(undefined);
 
-const STORAGE_KEY = "findit_campus_items_data_v2";
+const STORAGE_KEY = "findit_campus_items_data_v3";
 
 export function ItemsProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<Item[]>(INITIAL_ITEMS);
@@ -272,12 +262,12 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
     });
 
     const fallbackImages: Record<string, string> = {
-      Electronics: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=700&q=80",
-      "ID Cards": "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=700&q=80",
-      Wallets: "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=700&q=80",
-      Bottles: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=700&q=80",
-      Keys: "https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&w=700&q=80",
-      Bags: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=700&q=80",
+      Electronics: "/images/wireless-headphones.jpg",
+      "ID Cards": "/images/student-id-card.jpg",
+      Wallets: "/images/leather-wallet.jpg",
+      Bottles: "/images/water-bottle.jpg",
+      Keys: "/images/brass-keys.jpg",
+      Bags: "/images/college-backpack.jpg",
     };
 
     const newItem: Item = {
@@ -293,7 +283,7 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       imageUrl:
         newItemData.imageUrl ||
         fallbackImages[newItemData.category] ||
-        "https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&w=700&q=80",
+        "/images/brass-keys.jpg",
       reporter: "You (Submitted Just Now)",
       contactEmail: "student@university.edu",
       isUserReported: true,
