@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllItems, createItem } from "@/lib/db";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // GET /api/items - list items with optional search & filters
 export async function GET(request: NextRequest) {
   try {
@@ -52,45 +54,62 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/items - create a new lost or found item report
+// POST /api/items - create a new lost or found item report with strict validation
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const { title, location, description, type, category, campus, imageUrl, reporter, contactEmail } = body;
 
-    if (!body.title || !body.location || !body.description || !body.type) {
+    const errors: string[] = [];
+
+    if (!title || typeof title !== "string" || title.trim().length < 3) {
+      errors.push("Title is required and must be at least 3 characters long.");
+    }
+
+    if (!location || typeof location !== "string" || location.trim().length < 2) {
+      errors.push("Specific campus location is required (e.g. Central Library 2nd Floor).");
+    }
+
+    if (!description || typeof description !== "string" || description.trim().length < 5) {
+      errors.push("Description is required and must be at least 5 characters long.");
+    }
+
+    if (!type || (type !== "lost" && type !== "found")) {
+      errors.push("Type must be either 'lost' or 'found'.");
+    }
+
+    if (contactEmail && !EMAIL_REGEX.test(contactEmail)) {
+      errors.push("Please provide a valid contact email address.");
+    }
+
+    if (errors.length > 0) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing required fields: title, location, description, type",
+          error: errors[0],
+          errors,
         },
         { status: 400 }
       );
     }
 
-    if (body.type !== "lost" && body.type !== "found") {
-      return NextResponse.json(
-        { success: false, error: "Type must be either 'lost' or 'found'" },
-        { status: 400 }
-      );
-    }
-
     const newItem = createItem({
-      title: body.title,
-      category: body.category || "Other",
-      campus: body.campus || "Central Campus",
-      location: body.location,
-      description: body.description,
-      type: body.type,
-      imageUrl: body.imageUrl,
-      reporter: body.reporter || "Campus Community Member",
-      contactEmail: body.contactEmail || "student@university.edu",
+      title: title.trim(),
+      category: category || "Other",
+      campus: campus || "Central Campus",
+      location: location.trim(),
+      description: description.trim(),
+      type,
+      imageUrl,
+      reporter: reporter || "Campus Community Member",
+      contactEmail: contactEmail || "student@university.edu",
       isUserReported: body.isUserReported ?? true,
     });
 
     return NextResponse.json(
       {
         success: true,
-        message: `${body.type === "lost" ? "Lost" : "Found"} report created successfully`,
+        message: `${type === "lost" ? "Lost" : "Found"} report created successfully`,
         item: newItem,
       },
       { status: 201 }
@@ -98,7 +117,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("POST /api/items error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to create item" },
+      { success: false, error: "Failed to process item report", details: error instanceof Error ? error.message : "Invalid JSON" },
       { status: 500 }
     );
   }

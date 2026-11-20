@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 export interface Item {
   id: string;
@@ -18,6 +18,11 @@ export interface Item {
   claimantProof?: string;
   claimantEmail?: string;
   isUserReported?: boolean;
+}
+
+export interface ToastState {
+  message: string;
+  type: "success" | "error" | "info";
 }
 
 export const INITIAL_ITEMS: Item[] = [
@@ -178,9 +183,10 @@ interface ItemsContextType {
     description: string;
     type: "lost" | "found";
     imageUrl?: string;
-  }) => void;
-  claimItem: (itemId: string, proof: string, email: string) => void;
-  markRecovered: (itemId: string) => void;
+  }) => Promise<{ success: boolean; error?: string }>;
+  claimItem: (itemId: string, proof: string, email: string) => Promise<{ success: boolean; error?: string }>;
+  markRecovered: (itemId: string) => Promise<{ success: boolean; error?: string }>;
+  refreshItems: () => Promise<void>;
   selectedItem: Item | null;
   setSelectedItem: (item: Item | null) => void;
   claimingItem: Item | null;
@@ -190,8 +196,11 @@ interface ItemsContextType {
   reportModalType: "lost" | "found";
   setReportModalType: (type: "lost" | "found") => void;
   openReportModal: (type?: "lost" | "found") => void;
-  toastMessage: string | null;
-  showToast: (message: string) => void;
+  toast: ToastState | null;
+  toastMessage?: string | null;
+  showToast: (message: string, type?: "success" | "error" | "info") => void;
+  isLoading: boolean;
+  apiConnected: boolean;
 }
 
 const ItemsContext = createContext<ItemsContextType | undefined>(undefined);
@@ -204,44 +213,58 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
   const [claimingItem, setClaimingItem] = useState<Item | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportModalType, setReportModalType] = useState<"lost" | "found">("lost");
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiConnected, setApiConnected] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from Backend API with localStorage fallback
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const res = await fetch("/api/items");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && Array.isArray(data.items) && data.items.length > 0) {
-            setItems(data.items);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data.items));
-            setIsLoaded(true);
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn("Could not fetch from /api/items, falling back to localStorage", err);
-      }
+  const showToast = useCallback((message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 4500);
+  }, []);
 
-      // Fallback to localStorage
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setItems(parsed);
-          }
+  const refreshItems = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/items");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.items)) {
+          setItems(data.items);
+          setApiConnected(true);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data.items));
+          } catch {}
+          setIsLoading(false);
+          return;
         }
-      } catch (e) {
-        console.error("Failed to load items from storage", e);
       }
-      setIsLoaded(true);
+    } catch (err) {
+      console.warn("Backend API not reachable, using cached data", err);
+      setApiConnected(false);
     }
 
-    loadData();
+    // Fallback to localStorage if API unreachable
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setItems(parsed);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load items from storage", e);
+    }
+    setIsLoading(false);
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    refreshItems().then(() => setIsLoaded(true));
+  }, [refreshItems]);
 
   // Sync to local storage
   useEffect(() => {
@@ -253,13 +276,6 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [items, isLoaded]);
-
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
-  };
 
   const openReportModal = (type: "lost" | "found" = "lost") => {
     setReportModalType(type);
@@ -274,7 +290,7 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
     description: string;
     type: "lost" | "found";
     imageUrl?: string;
-  }) => {
+  }): Promise<{ success: boolean; error?: string }> => {
     const today = new Date().toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -291,12 +307,12 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
     };
 
     const payload = {
-      title: newItemData.title,
+      title: newItemData.title.trim(),
       category: newItemData.category,
       campus: newItemData.campus,
-      location: newItemData.location,
+      location: newItemData.location.trim(),
       date: today,
-      description: newItemData.description,
+      description: newItemData.description.trim(),
       type: newItemData.type,
       imageUrl:
         newItemData.imageUrl ||
@@ -307,7 +323,20 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       isUserReported: true,
     };
 
-    // Try posting to backend API
+    // Client-side quick check
+    if (!payload.title || payload.title.length < 3) {
+      showToast("Title must be at least 3 characters long", "error");
+      return { success: false, error: "Title must be at least 3 characters long" };
+    }
+    if (!payload.location || payload.location.length < 2) {
+      showToast("Campus location is required", "error");
+      return { success: false, error: "Campus location is required" };
+    }
+    if (!payload.description || payload.description.length < 5) {
+      showToast("Description must be at least 5 characters long", "error");
+      return { success: false, error: "Description must be at least 5 characters long" };
+    }
+
     try {
       const res = await fetch("/api/items", {
         method: "POST",
@@ -315,16 +344,23 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.item) {
-          setItems((prev) => [data.item, ...prev]);
-          showToast(`Your ${newItemData.type} item report has been published!`);
-          return;
-        }
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errorMsg = data.error || "Failed to publish item report";
+        showToast(errorMsg, "error");
+        return { success: false, error: errorMsg };
+      }
+
+      if (data.success && data.item) {
+        setItems((prev) => [data.item, ...prev]);
+        setApiConnected(true);
+        showToast(`Your ${newItemData.type} item report has been published!`, "success");
+        return { success: true };
       }
     } catch (err) {
-      console.warn("Backend API POST /api/items unavailable, updating locally", err);
+      console.warn("API request failed, fallback saving locally", err);
+      setApiConnected(false);
     }
 
     // Fallback local update
@@ -334,30 +370,52 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       status: "Available",
     };
     setItems((prev) => [localItem, ...prev]);
-    showToast(`Your ${newItemData.type} item report has been published!`);
+    showToast(`Your ${newItemData.type} item report has been saved locally!`, "success");
+    return { success: true };
   };
 
-  const claimItem = async (itemId: string, proof: string, email: string) => {
-    // Try posting to backend claims API
+  const claimItem = async (
+    itemId: string,
+    proof: string,
+    email: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    // Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!proof || proof.trim().length < 5) {
+      showToast("Please provide detailed identifying proof (at least 5 characters)", "error");
+      return { success: false, error: "Identifying proof must be at least 5 characters" };
+    }
+    if (!email || !emailRegex.test(email.trim())) {
+      showToast("Please provide a valid university email address", "error");
+      return { success: false, error: "Valid email address is required" };
+    }
+
     try {
       const res = await fetch("/api/claims", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId, proof, email }),
+        body: JSON.stringify({ itemId, proof: proof.trim(), email: email.trim() }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.item) {
-          setItems((prev) =>
-            prev.map((item) => (item.id === itemId ? data.item : item))
-          );
-          showToast("Claim verification submitted to Campus Security!");
-          return;
-        }
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errorMsg = data.error || "Failed to submit verification claim";
+        showToast(errorMsg, "error");
+        return { success: false, error: errorMsg };
+      }
+
+      if (data.success && data.item) {
+        setItems((prev) =>
+          prev.map((item) => (item.id === itemId ? data.item : item))
+        );
+        setApiConnected(true);
+        showToast("Claim verification submitted to Campus Security!", "success");
+        return { success: true };
       }
     } catch (err) {
-      console.warn("Backend API POST /api/claims unavailable, updating locally", err);
+      console.warn("API claims error, updating locally", err);
+      setApiConnected(false);
     }
 
     // Fallback local update
@@ -373,11 +431,11 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
           : item
       )
     );
-    showToast("Claim verification submitted to Campus Security!");
+    showToast("Claim verification submitted locally to Campus Security!", "success");
+    return { success: true };
   };
 
-  const markRecovered = async (itemId: string) => {
-    // Try updating via backend API
+  const markRecovered = async (itemId: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await fetch(`/api/items/${itemId}`, {
         method: "PATCH",
@@ -385,18 +443,24 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ status: "Recovered" }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.item) {
-          setItems((prev) =>
-            prev.map((item) => (item.id === itemId ? data.item : item))
-          );
-          showToast("Status updated to Recovered!");
-          return;
-        }
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.error || "Failed to update item status", "error");
+        return { success: false, error: data.error };
+      }
+
+      if (data.success && data.item) {
+        setItems((prev) =>
+          prev.map((item) => (item.id === itemId ? data.item : item))
+        );
+        setApiConnected(true);
+        showToast("Status updated to Recovered!", "success");
+        return { success: true };
       }
     } catch (err) {
-      console.warn("Backend API PATCH /api/items/[id] unavailable, updating locally", err);
+      console.warn("API PATCH error, updating locally", err);
+      setApiConnected(false);
     }
 
     // Fallback local update
@@ -410,7 +474,8 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
           : item
       )
     );
-    showToast("Status updated to Recovered!");
+    showToast("Status updated to Recovered!", "success");
+    return { success: true };
   };
 
   return (
@@ -420,6 +485,7 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
         addItem,
         claimItem,
         markRecovered,
+        refreshItems,
         selectedItem,
         setSelectedItem,
         claimingItem,
@@ -429,8 +495,11 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
         reportModalType,
         setReportModalType,
         openReportModal,
-        toastMessage,
+        toast,
+        toastMessage: toast?.message,
         showToast,
+        isLoading,
+        apiConnected,
       }}
     >
       {children}

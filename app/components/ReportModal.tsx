@@ -11,8 +11,12 @@ export default function ReportModal() {
   const [campus, setCampus] = useState("Central Campus");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState<string | null>(null);
 
   if (!isReportModalOpen) return null;
 
@@ -20,13 +24,13 @@ export default function ReportModal() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      showToast("Photo must be less than 10MB");
+      showToast("Photo must be less than 10MB", "error");
       return;
     }
     const reader = new FileReader();
     reader.onloadend = () => {
       setPhoto(reader.result as string);
-      showToast("Photo attached successfully!");
+      showToast("Photo attached successfully!", "success");
     };
     reader.readAsDataURL(file);
   };
@@ -37,50 +41,101 @@ export default function ReportModal() {
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith("image/")) {
       if (file.size > 10 * 1024 * 1024) {
-        showToast("Photo must be less than 10MB");
+        showToast("Photo must be less than 10MB", "error");
         return;
       }
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhoto(reader.result as string);
-        showToast("Photo attached successfully!");
+        showToast("Photo attached successfully!", "success");
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title || !location || !description) return;
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    addItem({
-      title,
+    if (!title.trim()) {
+      errors.title = "Item title is required.";
+    } else if (title.trim().length < 3) {
+      errors.title = "Item title must be at least 3 characters long.";
+    }
+
+    if (!location.trim()) {
+      errors.location = "Campus location is required.";
+    } else if (location.trim().length < 2) {
+      errors.location = "Please provide a specific location (e.g. Science Library 2nd floor).";
+    }
+
+    if (!description.trim()) {
+      errors.description = "Item description is required.";
+    } else if (description.trim().length < 5) {
+      errors.description = "Description must be at least 5 characters long.";
+    }
+
+    if (contactEmail && !emailRegex.test(contactEmail.trim())) {
+      errors.contactEmail = "Please enter a valid university email address.";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setApiError(null);
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    const result = await addItem({
+      title: title.trim(),
       category,
       campus,
-      location,
-      description,
+      location: location.trim(),
+      description: description.trim(),
       type: reportModalType,
       imageUrl: photo || undefined,
     });
 
-    setIsReportModalOpen(false);
-    setTitle("");
-    setLocation("");
-    setDescription("");
-    setPhoto(null);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      setIsReportModalOpen(false);
+      setTitle("");
+      setLocation("");
+      setDescription("");
+      setContactEmail("");
+      setPhoto(null);
+      setFormErrors({});
+      setApiError(null);
+    } else {
+      setApiError(result.error || "Failed to submit report. Please review your input.");
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
-          <h3 className="text-lg font-bold text-slate-900">
-            Publish a Campus Report
-          </h3>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">
+              Publish a Campus Report
+            </h3>
+            <p className="text-xs text-slate-500">
+              Stored directly in the campus backend database
+            </p>
+          </div>
           <button
             onClick={() => {
               setIsReportModalOpen(false);
               setPhoto(null);
+              setFormErrors({});
+              setApiError(null);
             }}
             className="text-slate-400 hover:text-slate-600 text-sm w-7 h-7 rounded-full flex items-center justify-center hover:bg-slate-100 transition cursor-pointer"
           >
@@ -89,11 +144,22 @@ export default function ReportModal() {
         </div>
 
         <div className="p-6 overflow-y-auto space-y-4">
+          {/* API Server Error State Alert */}
+          {apiError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <span>{apiError}</span>
+            </div>
+          )}
+
           {/* Lost / Found Toggle */}
           <div className="p-1 bg-slate-100 rounded-xl flex">
             <button
               type="button"
-              onClick={() => setReportModalType("lost")}
+              onClick={() => {
+                setReportModalType("lost");
+                setFormErrors({});
+              }}
               className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer ${
                 reportModalType === "lost"
                   ? "bg-[#0c242b] text-white shadow-sm"
@@ -104,7 +170,10 @@ export default function ReportModal() {
             </button>
             <button
               type="button"
-              onClick={() => setReportModalType("found")}
+              onClick={() => {
+                setReportModalType("found");
+                setFormErrors({});
+              }}
               className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer ${
                 reportModalType === "found"
                   ? "bg-[#0c242b] text-white shadow-sm"
@@ -116,20 +185,33 @@ export default function ReportModal() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* Title */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Item Title *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Item Title *
+                </label>
+                {formErrors.title && (
+                  <span className="text-[11px] text-rose-600 font-medium">{formErrors.title}</span>
+                )}
+              </div>
               <input
                 type="text"
-                required
                 placeholder="e.g. Sony WH-1000XM4, Blue Backpack, Toyota Key Fob..."
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0c242b] focus:outline-none focus:bg-white"
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (formErrors.title) setFormErrors((p) => ({ ...p, title: "" }));
+                }}
+                className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:ring-2 focus:outline-none focus:bg-white transition ${
+                  formErrors.title
+                    ? "border-rose-400 focus:ring-rose-400 bg-rose-50/30"
+                    : "border-slate-200 focus:ring-[#0c242b]"
+                }`}
               />
             </div>
 
+            {/* Category & Campus */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -168,17 +250,55 @@ export default function ReportModal() {
               </div>
             </div>
 
+            {/* Campus Location */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Specific Campus Location *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Specific Campus Location *
+                </label>
+                {formErrors.location && (
+                  <span className="text-[11px] text-rose-600 font-medium">{formErrors.location}</span>
+                )}
+              </div>
               <input
                 type="text"
-                required
                 placeholder="e.g. Central Library 2nd Floor, Main Cafeteria, Science Lab 204..."
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0c242b] focus:outline-none focus:bg-white"
+                onChange={(e) => {
+                  setLocation(e.target.value);
+                  if (formErrors.location) setFormErrors((p) => ({ ...p, location: "" }));
+                }}
+                className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:ring-2 focus:outline-none focus:bg-white transition ${
+                  formErrors.location
+                    ? "border-rose-400 focus:ring-rose-400 bg-rose-50/30"
+                    : "border-slate-200 focus:ring-[#0c242b]"
+                }`}
+              />
+            </div>
+
+            {/* Optional Email */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Contact Campus Email (Optional)
+                </label>
+                {formErrors.contactEmail && (
+                  <span className="text-[11px] text-rose-600 font-medium">{formErrors.contactEmail}</span>
+                )}
+              </div>
+              <input
+                type="email"
+                placeholder="student@university.edu"
+                value={contactEmail}
+                onChange={(e) => {
+                  setContactEmail(e.target.value);
+                  if (formErrors.contactEmail) setFormErrors((p) => ({ ...p, contactEmail: "" }));
+                }}
+                className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:ring-2 focus:outline-none focus:bg-white transition ${
+                  formErrors.contactEmail
+                    ? "border-rose-400 focus:ring-rose-400 bg-rose-50/30"
+                    : "border-slate-200 focus:ring-[#0c242b]"
+                }`}
               />
             </div>
 
@@ -204,7 +324,7 @@ export default function ReportModal() {
                   <img
                     src={photo}
                     alt="Uploaded preview"
-                    className="w-full h-44 object-cover"
+                    className="w-full h-40 object-cover"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <label
@@ -249,8 +369,8 @@ export default function ReportModal() {
                     onChange={handleImageUpload}
                     className="hidden"
                   />
-                  <div className="w-10 h-10 rounded-full bg-slate-200/80 flex items-center justify-center text-slate-600 mb-1.5">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-9 h-9 rounded-full bg-slate-200/80 flex items-center justify-center text-slate-600 mb-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -263,43 +383,67 @@ export default function ReportModal() {
                   <p className="text-xs font-semibold text-slate-800">
                     Upload item photo or drag and drop
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[10px] text-slate-400">
                     PNG, JPG, WEBP up to 10MB
                   </p>
                 </label>
               )}
             </div>
 
+            {/* Description */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Description *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Description *
+                </label>
+                {formErrors.description && (
+                  <span className="text-[11px] text-rose-600 font-medium">{formErrors.description}</span>
+                )}
+              </div>
               <textarea
-                required
                 rows={3}
                 placeholder="Describe color, brand, condition, unique markings, or surrounding circumstances..."
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0c242b] focus:outline-none focus:bg-white"
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  if (formErrors.description) setFormErrors((p) => ({ ...p, description: "" }));
+                }}
+                className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:ring-2 focus:outline-none focus:bg-white transition ${
+                  formErrors.description
+                    ? "border-rose-400 focus:ring-rose-400 bg-rose-50/30"
+                    : "border-slate-200 focus:ring-[#0c242b]"
+                }`}
               />
             </div>
 
+            {/* Buttons */}
             <div className="pt-2 flex items-center justify-end gap-2">
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={() => {
                   setIsReportModalOpen(false);
                   setPhoto(null);
+                  setFormErrors({});
+                  setApiError(null);
                 }}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 text-xs font-bold text-slate-950 bg-[#d4f938] hover:bg-[#c2f32e] rounded-full transition shadow-sm cursor-pointer"
+                disabled={isSubmitting}
+                className="px-5 py-2 text-xs font-bold text-slate-950 bg-[#d4f938] hover:bg-[#c2f32e] rounded-full transition shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
-                Publish Report
+                {isSubmitting ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                    <span>Publishing to API...</span>
+                  </>
+                ) : (
+                  <span>Publish Report</span>
+                )}
               </button>
             </div>
           </form>

@@ -6,7 +6,7 @@ import { useItems } from "../context/ItemsContext";
 import ItemCard from "../components/ItemCard";
 
 export default function LostItemsPage() {
-  const { items, openReportModal } = useItems();
+  const { items, openReportModal, isLoading } = useItems();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -237,7 +237,18 @@ export default function LostItemsPage() {
           )}
         </div>
 
-        {filteredItems.length === 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="bg-white rounded-2xl p-4 border border-slate-200 animate-pulse space-y-3">
+                <div className="w-full h-44 bg-slate-200 rounded-xl" />
+                <div className="h-4 bg-slate-200 rounded w-3/4" />
+                <div className="h-3 bg-slate-100 rounded w-1/2" />
+                <div className="h-8 bg-slate-200 rounded-full w-full mt-4" />
+              </div>
+            ))}
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-300">
             <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400 mb-3 text-xl">
               🔍

@@ -8,7 +8,7 @@ import { useItems } from "../context/ItemsContext";
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { openReportModal } = useItems();
+  const { openReportModal, apiConnected } = useItems();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
@@ -50,7 +50,17 @@ export default function Navbar() {
         </nav>
 
         {/* Right Action */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Live Node API Indicator */}
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border border-slate-200 bg-slate-50 text-slate-700">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                apiConnected ? "bg-emerald-500 animate-pulse" : "bg-emerald-500"
+              }`}
+            />
+            <span>Node API Active</span>
+          </div>
+
           <button
             onClick={() => openReportModal("lost")}
             className="bg-[#d4f938] hover:bg-[#c2f32e] text-slate-950 font-bold px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"

@@ -7,23 +7,56 @@ export default function ClaimModal() {
   const { claimingItem, setClaimingItem, claimItem } = useItems();
   const [claimProof, setClaimProof] = useState("");
   const [claimEmail, setClaimEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState<string | null>(null);
 
   if (!claimingItem) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!claimProof.trim()) {
+      errs.proof = "Identifying details are required.";
+    } else if (claimProof.trim().length < 5) {
+      errs.proof = "Please provide more details (at least 5 characters).";
+    }
+
+    if (!claimEmail.trim()) {
+      errs.email = "University email address is required.";
+    } else if (!emailRegex.test(claimEmail.trim())) {
+      errs.email = "Please enter a valid email (e.g. name@university.edu).";
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!claimProof || !claimEmail) return;
+    setApiError(null);
 
-    claimItem(claimingItem.id, claimProof, claimEmail);
-    setIsSubmitted(true);
+    if (!validate()) return;
 
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setClaimingItem(null);
-      setClaimProof("");
-      setClaimEmail("");
-    }, 2000);
+    setIsSubmitting(true);
+    const result = await claimItem(claimingItem.id, claimProof.trim(), claimEmail.trim());
+    setIsSubmitting(false);
+
+    if (result.success) {
+      setIsSubmitted(true);
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setClaimingItem(null);
+        setClaimProof("");
+        setClaimEmail("");
+        setErrors({});
+        setApiError(null);
+      }, 2500);
+    } else {
+      setApiError(result.error || "Failed to submit claim verification request.");
+    }
   };
 
   return (
@@ -31,16 +64,33 @@ export default function ClaimModal() {
       <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200">
         <div className="p-6">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <h3 className="text-lg font-bold text-slate-900">
-              Verify &amp; Claim Item
-            </h3>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">
+                Verify &amp; Claim Item
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Verifications are processed by Campus Security
+              </p>
+            </div>
             <button
-              onClick={() => setClaimingItem(null)}
+              onClick={() => {
+                setClaimingItem(null);
+                setErrors({});
+                setApiError(null);
+              }}
               className="text-slate-400 hover:text-slate-600 text-sm w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-100 cursor-pointer"
             >
               ✕
             </button>
           </div>
+
+          {/* API Error Alert */}
+          {apiError && (
+            <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <span>{apiError}</span>
+            </div>
+          )}
 
           {isSubmitted ? (
             <div className="py-8 text-center space-y-3">
@@ -51,7 +101,7 @@ export default function ClaimModal() {
                 Verification Request Sent!
               </h4>
               <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                Your claim for &quot;{claimingItem.title}&quot; is now pending verification. Check your student email ({claimEmail}) for pickup instructions and verification time.
+                Your claim for &quot;{claimingItem.title}&quot; has been recorded on the backend API. Check your email ({claimEmail}) for security instructions.
               </p>
             </div>
           ) : (
@@ -73,50 +123,88 @@ export default function ClaimModal() {
                 </div>
               </div>
 
+              {/* Proof textarea */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Secret Identifying Details *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Secret Identifying Details *
+                  </label>
+                  {errors.proof && (
+                    <span className="text-[11px] text-rose-600 font-medium">{errors.proof}</span>
+                  )}
+                </div>
                 <textarea
-                  required
                   placeholder="Describe unique characteristics not visible in the public photo (e.g. Serial numbers, keychain accessories, stickers, lock screen wallpaper, specific scratches)..."
                   rows={3}
                   value={claimProof}
-                  onChange={(e) => setClaimProof(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0c242b] focus:outline-none focus:bg-white"
+                  onChange={(e) => {
+                    setClaimProof(e.target.value);
+                    if (errors.proof) setErrors((p) => ({ ...p, proof: "" }));
+                  }}
+                  className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:ring-2 focus:outline-none focus:bg-white transition ${
+                    errors.proof
+                      ? "border-rose-400 focus:ring-rose-400 bg-rose-50/30"
+                      : "border-slate-200 focus:ring-[#0c242b]"
+                  }`}
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
                   Campus Security will match these details before releasing the item.
                 </p>
               </div>
 
+              {/* Email input */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Campus Student / Staff Email *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Campus Student / Staff Email *
+                  </label>
+                  {errors.email && (
+                    <span className="text-[11px] text-rose-600 font-medium">{errors.email}</span>
+                  )}
+                </div>
                 <input
                   type="email"
-                  required
                   placeholder="e.g. yourname@university.edu"
                   value={claimEmail}
-                  onChange={(e) => setClaimEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0c242b] focus:outline-none focus:bg-white"
+                  onChange={(e) => {
+                    setClaimEmail(e.target.value);
+                    if (errors.email) setErrors((p) => ({ ...p, email: "" }));
+                  }}
+                  className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:ring-2 focus:outline-none focus:bg-white transition ${
+                    errors.email
+                      ? "border-rose-400 focus:ring-rose-400 bg-rose-50/30"
+                      : "border-slate-200 focus:ring-[#0c242b]"
+                  }`}
                 />
               </div>
 
+              {/* Action buttons */}
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setClaimingItem(null)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    setClaimingItem(null);
+                    setErrors({});
+                    setApiError(null);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-slate-950 bg-[#d4f938] hover:bg-[#c2f32e] rounded-full transition shadow-sm cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 text-xs font-bold text-slate-950 bg-[#d4f938] hover:bg-[#c2f32e] rounded-full transition shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  Submit Claim Verification
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-3 h-3 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                      <span>Verifying via API...</span>
+                    </>
+                  ) : (
+                    <span>Submit Claim Verification</span>
+                  )}
                 </button>
               </div>
             </form>
