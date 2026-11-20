@@ -472,7 +472,7 @@ export default function DashboardPage() {
               <span className="text-base">🛡️</span>
               <div>
                 <p className="text-xs sm:text-sm text-slate-800">
-                  Campus Security Desk verified and secured <strong>3 Dorm Keys on Brass Ring</strong> found at Central Library.
+                  Campus Security Desk verified and secured <strong>Bike Key with Keychain</strong> found at Central Library.
                 </p>
                 <span className="text-[10px] text-slate-400">3 hours ago • Central Library</span>
               </div>

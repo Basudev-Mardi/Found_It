@@ -81,15 +81,15 @@ export const INITIAL_ITEMS: Item[] = [
   },
   {
     id: "item-5",
-    title: "Brass Keyring Set",
+    title: "Bike Key & Keychain",
     category: "Keys",
     campus: "Central Campus",
     location: "Central Library",
     date: "Nov 18, 2026",
-    description: "Three brass dorm keys on a circular metallic ring with a small black tag and bike locker key.",
+    description: "Black motorcycle / bike ignition key with leather keychain and bike locker tag found at Central Library.",
     status: "Available",
     type: "found",
-    imageUrl: "/images/brass-keys.jpg",
+    imageUrl: "/images/bike-key.jpg",
     reporter: "Library 2nd Floor Desk",
     contactEmail: "library-desk@campus.edu",
   },
@@ -196,7 +196,7 @@ interface ItemsContextType {
 
 const ItemsContext = createContext<ItemsContextType | undefined>(undefined);
 
-const STORAGE_KEY = "findit_campus_items_data_v3";
+const STORAGE_KEY = "findit_campus_items_data_v4";
 
 export function ItemsProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<Item[]>(INITIAL_ITEMS);
@@ -266,7 +266,7 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       "ID Cards": "/images/student-id-card.jpg",
       Wallets: "/images/leather-wallet.jpg",
       Bottles: "/images/water-bottle.jpg",
-      Keys: "/images/brass-keys.jpg",
+      Keys: "/images/bike-key.jpg",
       Bags: "/images/college-backpack.jpg",
     };
 
@@ -283,7 +283,7 @@ export function ItemsProvider({ children }: { children: React.ReactNode }) {
       imageUrl:
         newItemData.imageUrl ||
         fallbackImages[newItemData.category] ||
-        "/images/brass-keys.jpg",
+        "/images/bike-key.jpg",
       reporter: "You (Submitted Just Now)",
       contactEmail: "student@university.edu",
       isUserReported: true,
